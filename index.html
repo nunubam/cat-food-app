@@ -137,6 +137,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Ne
   background:#1A1A2E;color:#fff;padding:10px 20px;border-radius:20px;
   font-size:14px;opacity:0;transition:all .3s;z-index:999;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── CARD IMAGE ── */
+.card-thumb{width:72px;height:72px;border-radius:10px;object-fit:cover;
+  flex-shrink:0;border:1px solid var(--border);background:var(--bg);margin-right:12px;cursor:pointer}
+
+/* ── MODAL IMAGE ── */
+.img-preview{width:100%;max-height:200px;object-fit:contain;border-radius:10px;
+  border:1px solid var(--border);display:block;background:#f9f9f9}
+.img-placeholder{width:100%;padding:22px 0;border:2px dashed var(--border);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;color:var(--sub);
+  font-size:13px;cursor:pointer;background:#fafafa;text-align:center;gap:6px}
+.img-placeholder:hover{border-color:var(--primary);color:var(--primary)}
+.img-btns{display:flex;gap:8px;margin-top:8px}
+.btn-img{flex:1;border:1px solid var(--border);background:#fff;border-radius:8px;
+  padding:8px;font-size:12px;cursor:pointer;text-align:center;color:var(--sub)}
+.btn-img:hover{border-color:var(--primary);color:var(--primary)}
+
+/* ── IMAGE LIGHTBOX ── */
+.lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;
+  display:flex;align-items:center;justify-content:center}
+.lightbox.hidden{display:none}
+.lightbox img{max-width:94vw;max-height:88vh;border-radius:12px;object-fit:contain}
+.lightbox-close{position:absolute;top:16px;right:20px;color:#fff;font-size:28px;
+  cursor:pointer;background:none;border:none;line-height:1}
 </style>
 </head>
 <body>
@@ -196,6 +220,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Ne
   <div class="modal" id="modal">
     <div class="modal-handle"></div>
     <div class="modal-title" id="modal-title">습식 기록 추가</div>
+
+    <!-- 상품 사진 -->
+    <div class="fg">
+      <label class="fl">상품 사진 <span style="color:var(--sub);font-weight:400">(선택)</span></label>
+      <div id="img-preview-container">
+        <div class="img-placeholder" onclick="document.getElementById('img-file-input').click()">
+          📷 사진 추가 — 마마캣 북마클릿 사용 시 자동으로 불러와요
+        </div>
+      </div>
+      <div class="img-btns">
+        <button class="btn-img" type="button" onclick="document.getElementById('img-file-input').click()">📷 직접 업로드</button>
+        <button class="btn-img" type="button" onclick="clearImage()" id="btn-clear-img" style="display:none;color:#E03131;border-color:#E03131">🗑️ 사진 삭제</button>
+      </div>
+      <input type="file" id="img-file-input" accept="image/*" style="display:none" onchange="handleImgUpload(event)">
+    </div>
 
     <div class="fg">
       <label class="fl">제품명 *</label>
@@ -277,6 +316,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Ne
   </div>
 </div>
 
+<!-- Lightbox -->
+<div class="lightbox hidden" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="상품 이미지">
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -286,6 +331,7 @@ let records = JSON.parse(localStorage.getItem('catFood') || '[]');
 let filter  = 'all';
 let editId  = null;
 let selR    = '';
+let currentImageUrl = '';
 
 const LOVE_SET = new Set(['매우좋아함','좋아함']);
 
@@ -345,7 +391,8 @@ function render(){
   el.innerHTML = list.map(r=>`
     <div class="card">
       <div class="card-top">
-        <div>
+        ${r.imageUrl?`<img class="card-thumb" src="${esc(r.imageUrl)}" onerror="this.style.display='none'" loading="lazy" onclick="openLightbox('${esc(r.imageUrl)}')" title="클릭하면 크게 볼 수 있어요">`  :''}
+        <div style="flex:1;min-width:0">
           <div class="card-product">${esc(r.productName)}</div>
           <div class="card-meta">${esc(r.site)}${r.date?' · '+r.date:''}</div>
         </div>
@@ -398,6 +445,7 @@ function openModal(id=null){
     document.getElementById('i-weight').value  = r.weight;
     document.getElementById('i-date').value    = r.date||'';
     document.getElementById('i-memo').value    = r.memo||'';
+    currentImageUrl = r.imageUrl||'';
     applyReactionUI(r.reaction);
     calcPrice();
   } else {
@@ -405,7 +453,9 @@ function openModal(id=null){
     ['i-product','i-site','i-price','i-weight','i-memo'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('i-date').value = today();
     document.getElementById('price-preview').textContent = '💰 10g당 가격: — 원';
+    currentImageUrl = '';
   }
+  updateImgPreview();
   document.getElementById('overlay').classList.remove('hidden');
   document.getElementById('i-product').focus();
 }
@@ -458,10 +508,10 @@ function saveRecord(){
 
   if(editId){
     const i = records.findIndex(r=>r.id===editId);
-    records[i] = {...records[i], productName, site, price, weight, p10g, reaction:selR, date, memo};
+    records[i] = {...records[i], productName, site, price, weight, p10g, reaction:selR, date, memo, imageUrl:currentImageUrl};
     toast('✅ 수정되었습니다');
   } else {
-    records.push({id:Date.now()+'', productName, site, price, weight, p10g, reaction:selR, date, memo});
+    records.push({id:Date.now()+'', productName, site, price, weight, p10g, reaction:selR, date, memo, imageUrl:currentImageUrl});
     toast('✅ 저장되었습니다');
   }
   persist(); render(); closeModal();
@@ -477,9 +527,9 @@ function delRecord(id){
 
 // ── CSV export ─────────────────────────────────────────────────────
 function exportCSV(){
-  const header = '제품명,구매처,구매가격(원),무게(g),10g당가격(원),고양이반응,날짜,메모';
+  const header = '제품명,구매처,구매가격(원),무게(g),10g당가격(원),고양이반응,날짜,메모,이미지URL';
   const rows = records.map(r=>
-    [r.productName,r.site,r.price,r.weight,r.p10g,r.reaction,r.date||'',r.memo||'']
+    [r.productName,r.site,r.price,r.weight,r.p10g,r.reaction,r.date||'',r.memo||'',r.imageUrl||'']
     .map(v=>`"${String(v).replace(/"/g,'""')}"`)
     .join(',')
   );
@@ -525,7 +575,8 @@ function importCSV(e){
         p10g:parseFloat(cols[4])||0,
         reaction:cols[5]||'',
         date:cols[6]||'',
-        memo:cols[7]||''
+        memo:cols[7]||'',
+        imageUrl:cols[8]||''
       });
       added++;
     });
@@ -553,11 +604,15 @@ function today(){ return new Date().toISOString().split('T')[0]; }
   var p=parseInt((salePrice||price).content)||0;
   var wm=t.match(/(\\d+\\.?\\d*)\\s*(g|ml)/i);
   var w=wm?parseFloat(wm[1]):0;
+  var imgMeta=document.querySelector('meta[property="og:image"]');
+  var img=imgMeta?imgMeta.content:'';
+  if(img&&img.startsWith('/')) img=location.origin+img;
   var params=new URLSearchParams();
   params.set('product',t);
   params.set('price',p);
   params.set('weight',w);
   params.set('site','마마캣');
+  if(img) params.set('image',img);
   window.open('${appUrl}?'+params.toString(),'_blank');
 })();`;
   const el = document.getElementById('bookmarklet-btn');
@@ -575,12 +630,61 @@ function today(){ return new Date().toISOString().split('T')[0]; }
     document.getElementById('i-site').value    = p.get('site')||'마마캣';
     document.getElementById('i-price').value   = p.get('price')||'';
     document.getElementById('i-weight').value  = p.get('weight')||'';
+    currentImageUrl = p.get('image')||'';
     calcPrice();
+    updateImgPreview();
     toast('🐾 마마캣 상품 정보를 자동으로 불러왔어요!');
     // URL 파라미터 제거 (히스토리 오염 방지)
     history.replaceState(null,'',location.pathname);
   }, 300);
 })();
+
+// ── Image helpers ──────────────────────────────────────────────────
+function updateImgPreview(){
+  const container = document.getElementById('img-preview-container');
+  const clearBtn  = document.getElementById('btn-clear-img');
+  if(!container) return;
+  if(currentImageUrl){
+    container.innerHTML = `<img class="img-preview" src="${currentImageUrl}" onerror="this.parentNode.innerHTML='<div class=img-placeholder>⚠️ 이미지를 불러올 수 없어요</div>'">`;
+    clearBtn.style.display = '';
+  } else {
+    container.innerHTML = `<div class="img-placeholder" onclick="document.getElementById('img-file-input').click()">📷 사진 추가 — 마마캣 북마클릿 사용 시 자동으로 불러와요</div>`;
+    clearBtn.style.display = 'none';
+  }
+}
+function clearImage(){
+  currentImageUrl = '';
+  updateImgPreview();
+}
+function handleImgUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const canvas = document.createElement('canvas');
+      const MAX = 600;
+      let w=img.width, h=img.height;
+      if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      currentImageUrl = canvas.toDataURL('image/jpeg', 0.75);
+      updateImgPreview();
+      toast('📷 사진이 추가됐어요!');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+  e.target.value='';
+}
+function openLightbox(src){
+  document.getElementById('lightbox').classList.remove('hidden');
+  document.getElementById('lightbox-img').src = src;
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.add('hidden');
+}
 
 // ── Init ───────────────────────────────────────────────────────────
 render();
