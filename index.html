@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🐱 냥이 습식 기록</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#5B8DEF;--primary-light:#EEF3FF;
+  --bg:#F7F8FA;--card:#fff;
+  --text:#1A1A2E;--sub:#6B7280;--border:#E5E7EB;
+  --love:#FF6B9D;--ok:#FFA94D;--no:#868E96;
+  --shadow:0 1px 4px rgba(0,0,0,0.07);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Apple SD Gothic Neo',sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* ── HEADER ── */
+.header{background:#fff;border-bottom:1px solid var(--border);
+  padding:14px 20px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;}
+.header-title{font-size:17px;font-weight:700}
+.header-title span{margin-right:5px}
+.btn-add{background:var(--primary);color:#fff;border:none;border-radius:8px;
+  padding:8px 16px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px}
+.btn-add:hover{opacity:.9}
+
+/* ── MAIN ── */
+.main{max-width:680px;margin:0 auto;padding:20px 16px}
+
+/* ── SUMMARY ── */
+.summary{background:#fff;border:1px solid var(--border);border-radius:12px;
+  padding:14px 20px;margin-bottom:16px;display:flex;gap:0}
+.summary-item{flex:1;text-align:center;border-right:1px solid var(--border)}
+.summary-item:last-child{border-right:none}
+.s-val{font-size:22px;font-weight:700;color:var(--primary)}
+.s-lbl{font-size:11px;color:var(--sub);margin-top:2px}
+
+/* ── FILTER ── */
+.filter-bar{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:2px}
+.chip{border:1px solid var(--border);background:#fff;border-radius:20px;
+  padding:6px 14px;font-size:13px;cursor:pointer;white-space:nowrap;color:var(--sub)}
+.chip.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+/* ── SORT ── */
+.sort-bar{display:flex;align-items:center;justify-content:flex-end;gap:8px;margin-bottom:12px}
+.sort-lbl{font-size:12px;color:var(--sub)}
+.sort-select{border:1px solid var(--border);border-radius:6px;padding:4px 8px;
+  font-size:12px;background:#fff;cursor:pointer;color:var(--text)}
+
+/* ── CARDS ── */
+.card-list{display:flex;flex-direction:column;gap:10px}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;
+  padding:16px;box-shadow:var(--shadow)}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.card-product{font-size:15px;font-weight:600}
+.card-meta{font-size:12px;color:var(--sub);margin-top:3px}
+
+.badge{padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+.badge-love{background:#FFF0F6;color:var(--love)}
+.badge-ok{background:#FFF4E0;color:var(--ok)}
+.badge-no{background:#F1F3F5;color:var(--no)}
+
+.card-info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+.info-lbl{font-size:11px;color:var(--sub)}
+.info-val{font-size:14px;font-weight:500;margin-top:2px}
+.info-val.highlight{color:var(--primary);font-weight:700}
+
+.card-memo{font-size:13px;color:var(--sub);padding:8px 0;
+  border-top:1px solid var(--border);margin-top:4px}
+.card-actions{display:flex;justify-content:flex-end;gap:6px;
+  padding-top:10px;border-top:1px solid var(--border)}
+.btn-sm{border:none;background:none;padding:4px 10px;font-size:13px;
+  border-radius:6px;cursor:pointer;color:var(--sub)}
+.btn-sm:hover{background:var(--bg)}
+.btn-sm.del:hover{color:#E03131;background:#FFF5F5}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:60px 20px;color:var(--sub)}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-text{font-size:15px;line-height:1.6}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;
+  display:flex;align-items:flex-end;justify-content:center}
+.overlay.hidden{display:none}
+.modal{background:#fff;width:100%;max-width:680px;border-radius:20px 20px 0 0;
+  padding:20px 20px 40px;max-height:92vh;overflow-y:auto}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:18px}
+
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-bottom:5px}
+.fi{width:100%;border:1px solid var(--border);border-radius:8px;
+  padding:10px 12px;font-size:15px;outline:none;color:var(--text);background:#fff}
+.fi:focus{border-color:var(--primary)}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* reaction */
+.r-opts{display:flex;gap:7px;flex-wrap:wrap}
+.r-opt{flex:1;min-width:70px;border:2px solid var(--border);background:#fff;
+  border-radius:8px;padding:9px 6px;text-align:center;cursor:pointer;font-size:13px;
+  transition:all .15s}
+.r-opt:hover{border-color:var(--sub)}
+.r-sel-love{border-color:var(--love)!important;background:#FFF0F6;color:var(--love)}
+.r-sel-ok{border-color:var(--ok)!important;background:#FFF4E0;color:var(--ok)}
+.r-sel-no{border-color:var(--no)!important;background:#F1F3F5;color:var(--no)}
+
+/* price preview */
+.price-preview{background:var(--primary-light);border-radius:8px;padding:10px 14px;
+  font-size:14px;color:var(--primary);font-weight:600;margin-top:4px}
+
+/* form actions */
+.f-actions{display:flex;gap:10px;margin-top:22px}
+.btn-cancel{flex:1;border:1px solid var(--border);background:#fff;border-radius:10px;
+  padding:14px;font-size:15px;font-weight:600;cursor:pointer}
+.btn-save{flex:2;background:var(--primary);color:#fff;border:none;border-radius:10px;
+  padding:14px;font-size:15px;font-weight:600;cursor:pointer}
+.btn-save:hover{opacity:.9}
+
+/* import/export */
+.ie-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+.ie-title{font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px}
+.ie-row{display:flex;gap:8px}
+.btn-ie{flex:1;border:1px dashed var(--border);background:var(--bg);border-radius:8px;
+  padding:10px 6px;font-size:12px;cursor:pointer;text-align:center;color:var(--sub)}
+.btn-ie:hover{border-color:var(--primary);color:var(--primary)}
+
+/* notice box */
+.notice{background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;
+  padding:12px 14px;font-size:13px;color:#92400E;line-height:1.6;margin-bottom:16px}
+.notice strong{font-weight:700}
+
+/* toast */
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#1A1A2E;color:#fff;padding:10px 20px;border-radius:20px;
+  font-size:14px;opacity:0;transition:all .3s;z-index:999;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-title"><span>🐱</span>냥이 습식 기록</div>
+  <button class="btn-add" onclick="openModal()">+ 추가</button>
+</header>
+
+<main class="main">
+
+  <!-- Summary -->
+  <div class="summary">
+    <div class="summary-item">
+      <div class="s-val" id="s-total">0</div>
+      <div class="s-lbl">총 기록</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-val" id="s-love" style="color:var(--love)">0</div>
+      <div class="s-lbl">좋아함</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-val" id="s-ok" style="color:var(--ok)">0</div>
+      <div class="s-lbl">그냥그럼</div>
+    </div>
+    <div class="summary-item">
+      <div class="s-val" id="s-no" style="color:var(--no)">0</div>
+      <div class="s-lbl">안먹음</div>
+    </div>
+  </div>
+
+  <!-- Filter -->
+  <div class="filter-bar">
+    <button class="chip active" onclick="setFilter('all',this)">전체</button>
+    <button class="chip" onclick="setFilter('love',this)">😍 좋아함</button>
+    <button class="chip" onclick="setFilter('그냥그럼',this)">😐 그냥그럼</button>
+    <button class="chip" onclick="setFilter('안먹음',this)">🙅 안먹음</button>
+  </div>
+
+  <!-- Sort -->
+  <div class="sort-bar">
+    <span class="sort-lbl">정렬</span>
+    <select class="sort-select" id="sort-select" onchange="render()">
+      <option value="recent">최근 등록순</option>
+      <option value="price-asc">10g 가격 낮은순</option>
+      <option value="price-desc">10g 가격 높은순</option>
+      <option value="reaction">반응 좋은순</option>
+    </select>
+  </div>
+
+  <!-- Cards -->
+  <div class="card-list" id="card-list"></div>
+</main>
+
+<!-- Modal -->
+<div class="overlay hidden" id="overlay" onclick="handleOverlay(event)">
+  <div class="modal" id="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title">습식 기록 추가</div>
+
+    <div class="fg">
+      <label class="fl">제품명 *</label>
+      <input class="fi" id="i-product" type="text" placeholder="예: 네코야 습식 닭가슴살 150g">
+    </div>
+
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">구매처 *</label>
+        <input class="fi" id="i-site" type="text" placeholder="예: 쿠팡, 네이버">
+      </div>
+      <div class="fg">
+        <label class="fl">구매 날짜</label>
+        <input class="fi" id="i-date" type="date">
+      </div>
+    </div>
+
+    <div class="fr">
+      <div class="fg">
+        <label class="fl">구매 가격 (원) *</label>
+        <input class="fi" id="i-price" type="number" placeholder="3500" oninput="calcPrice()">
+      </div>
+      <div class="fg">
+        <label class="fl">제품 무게 (g) *</label>
+        <input class="fi" id="i-weight" type="number" placeholder="150" oninput="calcPrice()">
+      </div>
+    </div>
+
+    <div class="price-preview" id="price-preview">💰 10g당 가격: — 원</div>
+
+    <div class="fg" style="margin-top:14px">
+      <label class="fl">고양이 반응 *</label>
+      <div class="r-opts">
+        <button class="r-opt" data-val="매우좋아함" onclick="pickR('매우좋아함',this)">😍 매우 좋아함</button>
+        <button class="r-opt" data-val="좋아함"   onclick="pickR('좋아함',this)">😊 좋아함</button>
+        <button class="r-opt" data-val="그냥그럼" onclick="pickR('그냥그럼',this)">😐 그냥그럼</button>
+        <button class="r-opt" data-val="안먹음"   onclick="pickR('안먹음',this)">🙅 안먹음</button>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label class="fl">메모</label>
+      <input class="fi" id="i-memo" type="text" placeholder="예: 국물만 핥음, 처음엔 잘 먹다가 질림">
+    </div>
+
+    <div class="f-actions">
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-save"   onclick="saveRecord()">저장</button>
+    </div>
+
+    <!-- 마마캣 북마클릿 안내 -->
+    <div class="ie-section">
+      <div class="ie-title">🔗 마마캣 상품 페이지에서 자동 불러오기</div>
+      <div style="font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.6">
+        마마캣 상품 페이지에서 아래 버튼을 북마크에 드래그하거나,<br>
+        버튼을 우클릭 → <b>즐겨찾기에 추가</b>해 주세요.
+      </div>
+      <a id="bookmarklet-btn" class="btn-ie" style="text-decoration:none;display:block;text-align:center;padding:10px;font-size:13px;color:var(--primary);border-color:var(--primary)">
+        🐾 마마캣 → 냥이앱 자동입력
+      </a>
+      <div style="font-size:11px;color:var(--sub);margin-top:8px;line-height:1.7">
+        ① 위 버튼을 브라우저 북마크바로 <b>드래그</b>해서 저장<br>
+        ② 마마캣 상품 상세 페이지로 이동<br>
+        ③ 저장한 북마크 클릭 → 이 앱이 열리면서 제품명·가격·무게 자동 입력 ✨
+      </div>
+    </div>
+
+    <!-- CSV import/export -->
+    <div class="ie-section">
+      <div class="ie-title">📂 데이터 내보내기 / 가져오기</div>
+      <div class="ie-row">
+        <button class="btn-ie" onclick="exportCSV()">💾 CSV 내보내기</button>
+        <label  class="btn-ie">
+          📥 CSV 가져오기
+          <input type="file" accept=".csv" style="display:none" onchange="importCSV(event)">
+        </label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────
+let records = JSON.parse(localStorage.getItem('catFood') || '[]');
+let filter  = 'all';
+let editId  = null;
+let selR    = '';
+
+const LOVE_SET = new Set(['매우좋아함','좋아함']);
+
+function persist(){ localStorage.setItem('catFood', JSON.stringify(records)); }
+
+// ── Toast ──────────────────────────────────────────────────────────
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2000);
+}
+
+// ── Reaction helpers ───────────────────────────────────────────────
+function rClass(r){
+  if(LOVE_SET.has(r)) return 'badge-love';
+  if(r==='그냥그럼')  return 'badge-ok';
+  return 'badge-no';
+}
+function rEmoji(r){
+  return {매우좋아함:'😍 매우 좋아함', 좋아함:'😊 좋아함',
+          그냥그럼:'😐 그냥그럼', 안먹음:'🙅 안먹음'}[r] || r;
+}
+function rScore(r){
+  return {매우좋아함:4, 좋아함:3, 그냥그럼:2, 안먹음:1}[r] || 0;
+}
+
+// ── Render ─────────────────────────────────────────────────────────
+function render(){
+  // summary
+  document.getElementById('s-total').textContent = records.length;
+  document.getElementById('s-love').textContent  = records.filter(r=>LOVE_SET.has(r.reaction)).length;
+  document.getElementById('s-ok').textContent    = records.filter(r=>r.reaction==='그냥그럼').length;
+  document.getElementById('s-no').textContent    = records.filter(r=>r.reaction==='안먹음').length;
+
+  // filter
+  let list = filter==='all'   ? [...records]
+           : filter==='love'  ? records.filter(r=>LOVE_SET.has(r.reaction))
+           : records.filter(r=>r.reaction===filter);
+
+  // sort
+  const sort = document.getElementById('sort-select').value;
+  if(sort==='price-asc')  list.sort((a,b)=>a.p10g-b.p10g);
+  else if(sort==='price-desc') list.sort((a,b)=>b.p10g-a.p10g);
+  else if(sort==='reaction')   list.sort((a,b)=>rScore(b.reaction)-rScore(a.reaction));
+  else list.reverse();  // recent
+
+  const el = document.getElementById('card-list');
+  if(list.length===0){
+    el.innerHTML = `<div class="empty">
+      <div class="empty-icon">🐟</div>
+      <div class="empty-text">아직 기록이 없어요.<br>+ 추가 버튼으로 첫 기록을 남겨보세요!</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = list.map(r=>`
+    <div class="card">
+      <div class="card-top">
+        <div>
+          <div class="card-product">${esc(r.productName)}</div>
+          <div class="card-meta">${esc(r.site)}${r.date?' · '+r.date:''}</div>
+        </div>
+        <span class="badge ${rClass(r.reaction)}">${rEmoji(r.reaction)}</span>
+      </div>
+      <div class="card-info">
+        <div>
+          <div class="info-lbl">구매 가격</div>
+          <div class="info-val">${Number(r.price).toLocaleString()}원</div>
+        </div>
+        <div>
+          <div class="info-lbl">제품 무게</div>
+          <div class="info-val">${r.weight}g</div>
+        </div>
+        <div>
+          <div class="info-lbl">10g당 가격</div>
+          <div class="info-val highlight">${Number(r.p10g).toLocaleString()}원</div>
+        </div>
+      </div>
+      ${r.memo?`<div class="card-memo">💬 ${esc(r.memo)}</div>`:''}
+      <div class="card-actions">
+        <button class="btn-sm" onclick="editRecord('${r.id}')">수정</button>
+        <button class="btn-sm del" onclick="delRecord('${r.id}')">삭제</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Filter ─────────────────────────────────────────────────────────
+function setFilter(val, el){
+  filter = val;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+// ── Modal open/close ───────────────────────────────────────────────
+function openModal(id=null){
+  editId = id; selR = '';
+  document.querySelectorAll('.r-opt').forEach(b=>b.className='r-opt');
+
+  if(id){
+    const r = records.find(x=>x.id===id);
+    document.getElementById('modal-title').textContent = '기록 수정';
+    document.getElementById('i-product').value = r.productName;
+    document.getElementById('i-site').value    = r.site;
+    document.getElementById('i-price').value   = r.price;
+    document.getElementById('i-weight').value  = r.weight;
+    document.getElementById('i-date').value    = r.date||'';
+    document.getElementById('i-memo').value    = r.memo||'';
+    applyReactionUI(r.reaction);
+    calcPrice();
+  } else {
+    document.getElementById('modal-title').textContent = '습식 기록 추가';
+    ['i-product','i-site','i-price','i-weight','i-memo'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('i-date').value = today();
+    document.getElementById('price-preview').textContent = '💰 10g당 가격: — 원';
+  }
+  document.getElementById('overlay').classList.remove('hidden');
+  document.getElementById('i-product').focus();
+}
+function closeModal(){
+  document.getElementById('overlay').classList.add('hidden');
+  editId=null;
+}
+function handleOverlay(e){ if(e.target===document.getElementById('overlay')) closeModal(); }
+
+// ── Reaction UI ────────────────────────────────────────────────────
+function pickR(val, el){
+  selR = val;
+  document.querySelectorAll('.r-opt').forEach(b=>b.className='r-opt');
+  el.className = 'r-opt ' + (LOVE_SET.has(val)?'r-sel-love': val==='그냥그럼'?'r-sel-ok':'r-sel-no');
+}
+function applyReactionUI(val){
+  selR = val;
+  document.querySelectorAll('.r-opt').forEach(b=>{
+    if(b.dataset.val===val)
+      b.className='r-opt '+(LOVE_SET.has(val)?'r-sel-love':val==='그냥그럼'?'r-sel-ok':'r-sel-no');
+  });
+}
+
+// ── Price calc ─────────────────────────────────────────────────────
+function calcPrice(){
+  const p = parseFloat(document.getElementById('i-price').value);
+  const w = parseFloat(document.getElementById('i-weight').value);
+  const el = document.getElementById('price-preview');
+  if(p>0&&w>0){
+    const v = Math.round(p/w*10);
+    el.textContent = `💰 10g당 가격: ${v.toLocaleString()}원`;
+  } else {
+    el.textContent = '💰 10g당 가격: — 원';
+  }
+}
+
+// ── CRUD ───────────────────────────────────────────────────────────
+function saveRecord(){
+  const productName = document.getElementById('i-product').value.trim();
+  const site        = document.getElementById('i-site').value.trim();
+  const price       = parseFloat(document.getElementById('i-price').value);
+  const weight      = parseFloat(document.getElementById('i-weight').value);
+  const date        = document.getElementById('i-date').value;
+  const memo        = document.getElementById('i-memo').value.trim();
+
+  if(!productName||!site||!price||!weight||!selR){
+    toast('⚠️ 필수 항목을 모두 입력해주세요'); return;
+  }
+  const p10g = Math.round(price/weight*10);
+
+  if(editId){
+    const i = records.findIndex(r=>r.id===editId);
+    records[i] = {...records[i], productName, site, price, weight, p10g, reaction:selR, date, memo};
+    toast('✅ 수정되었습니다');
+  } else {
+    records.push({id:Date.now()+'', productName, site, price, weight, p10g, reaction:selR, date, memo});
+    toast('✅ 저장되었습니다');
+  }
+  persist(); render(); closeModal();
+}
+
+function editRecord(id){ closeModal(); setTimeout(()=>openModal(id),50); }
+
+function delRecord(id){
+  if(!confirm('이 기록을 삭제할까요?')) return;
+  records = records.filter(r=>r.id!==id);
+  persist(); render(); toast('🗑️ 삭제되었습니다');
+}
+
+// ── CSV export ─────────────────────────────────────────────────────
+function exportCSV(){
+  const header = '제품명,구매처,구매가격(원),무게(g),10g당가격(원),고양이반응,날짜,메모';
+  const rows = records.map(r=>
+    [r.productName,r.site,r.price,r.weight,r.p10g,r.reaction,r.date||'',r.memo||'']
+    .map(v=>`"${String(v).replace(/"/g,'""')}"`)
+    .join(',')
+  );
+  const csv = '\uFEFF'+header+'\n'+rows.join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download = '냥이습식기록_'+today()+'.csv';
+  a.click();
+  toast('💾 CSV로 저장되었습니다');
+}
+
+// ── CSV import ─────────────────────────────────────────────────────
+function importCSV(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev=>{
+    const lines = ev.target.result.replace(/\r/g,'').split('\n').slice(1).filter(l=>l.trim());
+    let added = 0;
+    lines.forEach(line=>{
+      const cols = [];
+      let cur='', inQ=false;
+      for(let i=0;i<line.length;i++){
+        if(line[i]==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ; }
+        else if(line[i]===','&&!inQ){ cols.push(cur); cur=''; }
+        else cur+=line[i];
+      }
+      cols.push(cur);
+      if(cols.length<6) return;
+      records.push({
+        id: Date.now()+Math.random()+'',
+        productName:cols[0]||'',
+        site:cols[1]||'',
+        price:parseFloat(cols[2])||0,
+        weight:parseFloat(cols[3])||0,
+        p10g:parseFloat(cols[4])||0,
+        reaction:cols[5]||'',
+        date:cols[6]||'',
+        memo:cols[7]||''
+      });
+      added++;
+    });
+    persist(); render(); toast(`📥 ${added}개 항목을 가져왔습니다`);
+    e.target.value='';
+  };
+  reader.readAsText(file,'UTF-8');
+}
+
+// ── Utils ───────────────────────────────────────────────────────────
+function today(){ return new Date().toISOString().split('T')[0]; }
+
+// ── Bookmarklet 생성 ────────────────────────────────────────────────
+(function(){
+  // 앱 파일의 절대 경로를 북마클릿에 심어줌
+  const appUrl = location.href.split('?')[0];
+  const code = `(function(){
+  var title=document.querySelector('meta[property="og:title"]');
+  var price=document.querySelector('meta[property="product:price:amount"]');
+  var salePrice=document.querySelector('meta[property="product:sale_price:amount"]');
+  if(!title){alert('마마캣 상품 페이지에서 실행해 주세요!');return;}
+  var t=title.content;
+  var p=parseInt((salePrice||price).content)||0;
+  var wm=t.match(/(\\d+\\.?\\d*)\\s*(g|ml)/i);
+  var w=wm?parseFloat(wm[1]):0;
+  var params=new URLSearchParams();
+  params.set('product',t);
+  params.set('price',p);
+  params.set('weight',w);
+  params.set('site','마마캣');
+  window.open('${appUrl}?'+params.toString(),'_blank');
+})();`;
+  const el = document.getElementById('bookmarklet-btn');
+  if(el) el.href = 'javascript:' + encodeURIComponent(code);
+})();
+
+// ── URL 파라미터로 자동 입력 ─────────────────────────────────────────
+(function(){
+  const p = new URLSearchParams(location.search);
+  if(!p.get('product')) return;
+  // 잠깐 후 모달 열고 값 채우기
+  setTimeout(()=>{
+    openModal();
+    document.getElementById('i-product').value = p.get('product')||'';
+    document.getElementById('i-site').value    = p.get('site')||'마마캣';
+    document.getElementById('i-price').value   = p.get('price')||'';
+    document.getElementById('i-weight').value  = p.get('weight')||'';
+    calcPrice();
+    toast('🐾 마마캣 상품 정보를 자동으로 불러왔어요!');
+    // URL 파라미터 제거 (히스토리 오염 방지)
+    history.replaceState(null,'',location.pathname);
+  }, 300);
+})();
+
+// ── Init ───────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
