@@ -492,23 +492,30 @@ function exportCSV(){
 }
 
 // ── CSV import ─────────────────────────────────────────────────────
+function parseCSVLine(line){
+  const cols=[]; let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    if(line[i]==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ; }
+    else if(line[i]===','&&!inQ){ cols.push(cur); cur=''; }
+    else cur+=line[i];
+  }
+  cols.push(cur); return cols;
+}
 function importCSV(e){
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
   reader.onload = ev=>{
     const lines = ev.target.result.replace(/\r/g,'').split('\n').slice(1).filter(l=>l.trim());
-    let added = 0;
+    // 중복 체크용 키 (제품명+날짜+가격)
+    const existingKeys = new Set(records.map(r=>`${r.productName}|${r.date}|${r.price}`));
+    let added=0, skipped=0;
     lines.forEach(line=>{
-      const cols = [];
-      let cur='', inQ=false;
-      for(let i=0;i<line.length;i++){
-        if(line[i]==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ; }
-        else if(line[i]===','&&!inQ){ cols.push(cur); cur=''; }
-        else cur+=line[i];
-      }
-      cols.push(cur);
+      const cols = parseCSVLine(line);
       if(cols.length<6) return;
+      const key = `${cols[0]}|${cols[6]||''}|${cols[2]||0}`;
+      if(existingKeys.has(key)){ skipped++; return; }
+      existingKeys.add(key);
       records.push({
         id: Date.now()+Math.random()+'',
         productName:cols[0]||'',
@@ -522,7 +529,9 @@ function importCSV(e){
       });
       added++;
     });
-    persist(); render(); toast(`📥 ${added}개 항목을 가져왔습니다`);
+    persist(); render();
+    const msg = skipped>0 ? `📥 ${added}개 추가 (중복 ${skipped}개 건너뜀)` : `📥 ${added}개 항목을 가져왔습니다`;
+    toast(msg);
     e.target.value='';
   };
   reader.readAsText(file,'UTF-8');
